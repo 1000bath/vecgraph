@@ -11,7 +11,7 @@ interface ThresholdFile {
 }
 
 const datasetPath = path.resolve(process.cwd(), "tests/memory/eval.dataset.json");
-const thresholdPath = path.resolve(process.cwd(), "src/memory/eval.thresholds.json");
+const thresholdPath = path.resolve(process.cwd(), "src/eval.thresholds.json");
 
 async function loadFixtures(): Promise<{
   harness: EvalHarness;
