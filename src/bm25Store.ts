@@ -43,12 +43,25 @@ export class BM25Store {
 
   /** Search using BM25 ranking. Returns scored results sorted by relevance. */
   search(query: string, topK = 10): BM25Result[] {
-    const rows = this.db.prepare(`
+    if (!query.trim() || !Number.isFinite(topK) || topK <= 0) return [];
+    const limit = Math.floor(topK);
+    const run = (term: string) => this.db.prepare(`
       SELECT memory_id, rank FROM memory_content_search
       WHERE memory_content_search MATCH ?
       ORDER BY rank ASC
       LIMIT ?
-    `).all(query, topK) as Array<{ memory_id: string; rank: number }>;
+    `).all(term, limit) as Array<{ memory_id: string; rank: number }>;
+    let rows: Array<{ memory_id: string; rank: number }>;
+    try {
+      rows = run(query);
+    } catch {
+      // MATCH uses a query language; user punctuation (e.g. "C++" or an
+      // unmatched quote) must not make search fail. Retry with plain tokens.
+      const tokens = query.match(/[\p{L}\p{N}_-]+/gu) ?? [];
+      if (!tokens.length) return [];
+      try { rows = run(tokens.map((token) => `"${token.replace(/"/g, '""')}"`).join(" OR ")); }
+      catch { return []; }
+    }
 
     // FTS5 returns negative rank (lower = better)
     return rows.map((row) => ({

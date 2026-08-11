@@ -49,19 +49,24 @@ export class SQLiteVectorStore {
 
   /** Search for top-k similar embeddings using cosine similarity. */
   search(queryEmbedding: number[], topK = 10): { memoryId: string; score: number }[] {
+    if (!Number.isFinite(topK) || topK <= 0) return [];
     const rows = this.db.prepare(`
       SELECT memory_id, vector FROM memory_embeddings
       ORDER BY memory_id
-      LIMIT 1000
     `).all() as Array<{ memory_id: string; vector: Buffer }>;
 
     const scored = rows.map((row) => {
-      const storedEmbedding = new Float32Array(row.vector.buffer);
+      // SQLite may return a Buffer view into a pooled ArrayBuffer. Respect its
+      // byteOffset/byteLength rather than decoding the entire backing buffer.
+      const bytes = row.vector as Uint8Array;
+      const start = bytes.byteOffset;
+      const end = start + bytes.byteLength;
+      const storedEmbedding = new Float32Array(bytes.buffer.slice(start, end));
       const score = this.cosineSimilarity(queryEmbedding, Array.from(storedEmbedding));
       return { memoryId: row.memory_id, score };
-    });
+    }).filter((result) => Number.isFinite(result.score));
 
-    return scored.sort((a, b) => b.score - a.score).slice(0, topK);
+    return scored.sort((a, b) => b.score - a.score).slice(0, Math.floor(topK));
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
@@ -69,7 +74,11 @@ export class SQLiteVectorStore {
     let normA = 0;
     let normB = 0;
 
-    for (let i = 0; i < a.length; i++) {
+    // Providers can occasionally change dimensions; compare only the common
+    // prefix instead of producing NaN from undefined values.
+    const length = Math.min(a.length, b.length);
+    for (let i = 0; i < length; i++) {
+      if (!Number.isFinite(a[i]) || !Number.isFinite(b[i])) return 0;
       dotProduct += a[i] * b[i];
       normA += a[i] * a[i];
       normB += b[i] * b[i];
@@ -94,7 +103,10 @@ export class SQLiteVectorStore {
     `).get(memoryId) as { memory_id: string; vector: Buffer; updated_at: string } | undefined;
 
     if (!row) return null;
-    const embedding = Array.from(new Float32Array(row.vector.buffer));
+    const bytes = row.vector as Uint8Array;
+    const start = bytes.byteOffset;
+    const end = start + bytes.byteLength;
+    const embedding = Array.from(new Float32Array(bytes.buffer.slice(start, end)));
     return {
       memoryId: row.memory_id,
       embedding,
