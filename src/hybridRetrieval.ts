@@ -1,4 +1,3 @@
-import type { BM25Result } from "./bm25Store.js";
 import type { SQLiteVectorStore } from "./sqliteVectorStore.js";
 import type { BM25Store } from "./bm25Store.js";
 
@@ -20,7 +19,8 @@ export class HybridRetrieval {
   constructor(
     private vectorStore: SQLiteVectorStore,
     private bm25Store: BM25Store,
-    private k = 60
+    private k = 60,
+    private candidateMultiplier = 8
   ) {}
 
   /**
@@ -31,13 +31,17 @@ export class HybridRetrieval {
    * @returns Fused results sorted by RRF score
    */
   search(query: string, queryEmbedding: number[], topK = 10): HybridResult[] {
+    if (!Number.isFinite(topK) || topK <= 0) return [];
+    const limit = Math.floor(topK);
+    const candidateLimit = Math.max(limit * this.candidateMultiplier, limit);
+
     // Run both searches independently
-    const bm25Results = this.bm25Store.search(query, topK * 2);
-    const vectorResults = this.vectorStore.search(queryEmbedding, topK * 2);
+    const bm25Results = this.bm25Store.search(query, candidateLimit);
+    const vectorResults = this.vectorStore.search(queryEmbedding, candidateLimit);
 
     // Build rank maps (lower rank = better)
-    const vectorRanks = new Map(vectorResults.map((r, i) => [r.memoryId, i]));
-    const bm25Ranks = new Map(bm25Results.map((r, i) => [r.memoryId, i]));
+    const vectorRanks = new Map(vectorResults.map((r, i) => [r.memoryId, i + 1]));
+    const bm25Ranks = new Map(bm25Results.map((r, i) => [r.memoryId, i + 1]));
 
     // Collect all memory IDs
     const memoryIds = new Set([...vectorRanks.keys(), ...bm25Ranks.keys()]);
@@ -61,14 +65,17 @@ export class HybridRetrieval {
     }
 
     // Sort by RRF score descending, return top-k
-    return fused.sort((a, b) => b.rrfScore - a.rrfScore).slice(0, topK);
+    return fused
+      .sort((a, b) => b.rrfScore - a.rrfScore || a.memoryId.localeCompare(b.memoryId))
+      .slice(0, limit);
   }
 
   /**
    * Vector-only search (fallback when embedder is down).
    */
   vectorSearch(queryEmbedding: number[], topK = 10): HybridResult[] {
-    const results = this.vectorStore.search(queryEmbedding, topK);
+    if (!Number.isFinite(topK) || topK <= 0) return [];
+    const results = this.vectorStore.search(queryEmbedding, Math.floor(topK));
     return results.map((r) => ({
       memoryId: r.memoryId,
       vectorScore: r.score,
@@ -81,7 +88,8 @@ export class HybridRetrieval {
    * BM25-only search (fallback when embedder is down).
    */
   bm25Search(query: string, topK = 10): HybridResult[] {
-    const results = this.bm25Store.search(query, topK);
+    if (!Number.isFinite(topK) || topK <= 0) return [];
+    const results = this.bm25Store.search(query, Math.floor(topK));
     return results.map((r) => ({
       memoryId: r.memoryId,
       vectorScore: 0,

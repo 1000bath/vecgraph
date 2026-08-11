@@ -18,6 +18,23 @@ const results = await memory.recall({ type: "fact", limit: 10 });
 const searched = await memory.searchMemories("search query");
 ```
 
+SQLite-backed hybrid search is enabled when you provide a `node:sqlite` database:
+
+```ts
+import { DatabaseSync } from "node:sqlite";
+import { MemoryAdapter } from "dek-memory";
+
+const db = new DatabaseSync(".oracle-memory/memory.db");
+const memory = new MemoryAdapter(process.cwd());
+memory.initWithDatabase(db);
+
+await memory.remember("agent", "fact", "Postgres owns transactional data", {
+  tags: ["database", "postgres"],
+});
+
+const hits = await memory.searchMemories("postgres database", { type: "fact", limit: 5 });
+```
+
 ## Features
 
 - **Hybrid retrieval** — BM25 keyword + vector similarity + entity graph expansion
@@ -28,6 +45,46 @@ const searched = await memory.searchMemories("search query");
 - **AST graph** — Map code structure for dependency-aware recall
 - **Eval harness** — Benchmark retrieval quality with configurable thresholds
 - **No deps** — Pure Node.js: `node:sqlite`, `node:fs`, `node:path`
+
+## Search Behavior
+
+`searchMemories(query)` prefers the SQLite hybrid backend when initialized, then falls back to an in-process lexical scorer. Results are filtered through live memory files, so archived, pruned, superseded, missing-anchor, agent, and type filters still apply.
+
+BM25 search:
+
+- Uses SQLite FTS5 with sanitized query parsing, so punctuation-heavy queries such as `CI/CD`, `C++`, or unmatched quotes do not fail the search.
+- Runs exact phrase, all-token, OR-token, and prefix-token attempts, then merges candidates.
+- Re-ranks candidates with BM25 rank, query-term coverage, phrase matches, and term density.
+- Indexes tags alongside content through `MemoryAdapter`, so tag-only matches can rank.
+
+Vector search:
+
+- Stores embeddings as compact `Float32Array` blobs with dimension and magnitude metadata.
+- Computes the query magnitude once per search and scores directly against decoded typed arrays.
+- Ignores invalid, zero, and corrupted vectors instead of letting them pollute the result set.
+- Penalizes dimension mismatches so a short common prefix does not outrank a full matching vector.
+
+Hybrid retrieval:
+
+- Uses Reciprocal Rank Fusion over deeper BM25 and vector candidate pools before truncating to `limit`.
+- Sorts ties deterministically by memory id for stable tests and reproducible recall.
+- Falls back to BM25 if embedding generation is unavailable or fails.
+
+## Performance Notes
+
+- `remember()` updates the BM25 index synchronously and vector embeddings asynchronously, so writes stay responsive even if an embedder is slow.
+- `updateMemory()` refreshes lexical index rows for content or tag changes and refreshes vectors for content changes.
+- `forget()` and `clearWorking()` remove matching SQLite search rows.
+- For large stores, initialize with SQLite and keep a long-lived database connection open instead of relying on filesystem-only fallback search.
+
+## Development
+
+```bash
+npm run typecheck
+npm test
+```
+
+The package uses strict TypeScript with additional checks for casing, switch fallthrough, override declarations, and side-effect imports. The test suite includes focused ranking coverage for BM25, vector similarity, hybrid fusion, adapter recall scope, consolidation, maintenance, anchors, and graph behavior.
 
 ## Design
 

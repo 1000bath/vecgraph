@@ -465,7 +465,7 @@ export class MemoryAdapter implements MemoryPort {
     if (this.sqliteBackend) {
       // Index both vector (semantic) and BM25 (lexical)
       this.sqliteBackend.indexMemory(entry.id, content).catch(() => {});
-      this.sqliteBackend.indexContent(entry.id, content);
+      this.sqliteBackend.indexContent(entry.id, `${content} ${entry.tags.join(" ")}`);
     } else if (USE_OLLAMA) {
       // Fallback: legacy JSON-based vector store
       this.ensureVectors().then(() => this.vectors.index(entry.id, content)).catch(() => {});
@@ -682,7 +682,10 @@ export class MemoryAdapter implements MemoryPort {
       this.queueContentIndex(MemoryAdapter.contentKey(type, canonicalContent(entry.content)), entry.id);
     }
     if (entry.anchors?.length) this.queueAnchorIndex({ id: entry.id, type: entry.type, anchors: entry.anchors });
-    if (USE_OLLAMA && updates.content !== undefined) {
+    if (this.sqliteBackend && (updates.content !== undefined || updates.tags !== undefined)) {
+      if (updates.content !== undefined) this.sqliteBackend.indexMemory(id, entry.content).catch(() => {});
+      this.sqliteBackend.indexContent(id, `${entry.content} ${entry.tags.join(" ")}`);
+    } else if (USE_OLLAMA && updates.content !== undefined) {
       this.ensureVectors().then(() => this.vectors.index(id, entry.content)).catch(() => {});
     }
     return entry;
@@ -805,7 +808,8 @@ export class MemoryAdapter implements MemoryPort {
         const id = file.replace(".json", "");
         await fs.unlink(path.join(dir, file));
         this.queueAnchorIndex({ id, type: "working", deleted: true });
-        if (USE_OLLAMA) this.vectors.remove(id).catch(() => {});
+        if (this.sqliteBackend) this.sqliteBackend.remove(id);
+        else if (USE_OLLAMA) this.vectors.remove(id).catch(() => {});
         this.entityGraph.removeMemory(id).catch(() => {});
         count++;
       }
