@@ -1,0 +1,43 @@
+{
+  "name": "dek-memory",
+  "version": "0.1.0",
+  "description": "Hybrid memory engine for AI agents — BM25 + vector + entity/AST graph retrieval over SQLite, with consolidation, decay, anchors, and an eval harness. Zero runtime dependencies (Node 24 built-ins only).",
+  "keywords": [
+    "agent-memory",
+    "ai-memory",
+    "bm25",
+    "vector-search",
+    "entity-graph",
+    "sqlite",
+    "llm",
+    "mcp"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1000bath/dek.git",
+    "directory": "packages/dek-memory"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run src"
+  }
+}
