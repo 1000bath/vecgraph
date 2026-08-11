@@ -1,27 +1,33 @@
-# dek — Open-source AI agent ecosystem
+# dek-memory
 
-A complete, modular infrastructure for building and running AI agents with persistent memory, multi-provider routing, and tool integration.
-
-## Packages
-
-- **[`dek-memory`](packages/dek-memory/)** — Hybrid retrieval engine (BM25 + vector + entity/AST graph) over SQLite with consolidation, decay, file anchors, and eval harness. Zero runtime dependencies.
-- **`dek-agent`** — Agent loop with checkpoints, approval gates, and sandboxing. Merges the best of ClewCode and Oracle.
-- **`dek-gateway`** — OpenAI-compatible LLM proxy with multi-provider failover, key pooling, thinking translation (8 model families), and smart caching. From FLUX.
-- **`dek-mcp`** — MCP server wrapper for memory, agent, and gateway so any agent (Claude Code, prime-agent, etc.) can use dek services.
-- **`dek-cli`** — Terminal UI (Ink + React) and daemon for interactive Q&A, autonomous tasks, and multi-agent coordination.
+Hybrid memory engine for AI agents — **BM25 + vector + entity/AST graph retrieval** over SQLite with consolidation, decay, file anchors, and eval harness. **Zero runtime dependencies** (Node 24 built-ins only).
 
 ## Quick Start
 
 ```bash
-# Install monorepo
-npm install
+# Install
+npm install dek-memory
 
-# Build all packages
-npm run build
+# Use
+import { MemoryAdapter } from "dek-memory";
 
-# Test
-npm test
+const memory = new MemoryAdapter(".oracle-memory");
+await memory.remember("agent", "fact", "Important insight about the codebase");
+
+const results = await memory.recall({ type: "fact", limit: 10 });
+const searched = await memory.searchMemories("search query");
 ```
+
+## Features
+
+- **Hybrid retrieval** — BM25 keyword + vector similarity + entity graph expansion
+- **Consolidation** — Auto-merge duplicate memories by tag overlap
+- **Decay & maintenance** — Prune stale entries, promote working memory to insights
+- **File anchors** — Track memories to exact code locations; verify freshness
+- **Entity graph** — Extract and navigate relations between concepts
+- **AST graph** — Map code structure for dependency-aware recall
+- **Eval harness** — Benchmark retrieval quality with configurable thresholds
+- **No deps** — Pure Node.js: `node:sqlite`, `node:fs`, `node:path`
 
 ## Design
 
