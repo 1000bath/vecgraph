@@ -80,7 +80,7 @@ export class SQLiteVectorStore {
     const rows = this.db.prepare(`
       SELECT memory_id, vector, dimension, magnitude FROM memory_embeddings
       ORDER BY memory_id
-    `).all() as VectorRow[];
+    `).all() as unknown as VectorRow[];
 
     const scored: ScoredVectorResult[] = [];
     for (const row of rows) {

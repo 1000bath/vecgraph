@@ -108,7 +108,7 @@ export class BM25Store {
       WHERE memory_content_search MATCH ?
       ORDER BY rank ASC
       LIMIT ?
-    `).all(matchQuery, limit) as BM25Row[];
+    `).all(matchQuery, limit) as unknown as BM25Row[];
   }
 
   private buildMatchQueries(rawQuery: string, tokens: string[]): string[] {

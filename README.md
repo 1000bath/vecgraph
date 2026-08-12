@@ -33,9 +33,16 @@ await memory.remember("agent", "fact", "Postgres owns transactional data", {
 });
 
 const hits = await memory.searchMemories("postgres database", { type: "fact", limit: 5 });
+
+// Keep the database open for the lifetime of the adapter, then close it on shutdown.
+db.close();
 ```
 
+`remember()` persists the memory to `.oracle-memory/` and updates the SQLite FTS5 index immediately. Embeddings are generated asynchronously when an embedding provider is configured; without one, BM25 search remains available.
+
 ## Features
+
+- **Integration-tested lifecycle** — real file storage plus SQLite indexing is covered by `src/adapter.e2e.test.ts`.
 
 - **Hybrid retrieval** — BM25 keyword + vector similarity + entity graph expansion
 - **Consolidation** — Auto-merge duplicate memories by tag overlap

@@ -308,6 +308,30 @@ describe("MemoryAdapter — end to end", () => {
 
   // ── v0.6.0 Hybrid Retrieval Tests ────────────────────────────────
 
+  it("wires MemoryAdapter to SQLite indexes across remember, search, and forget", async () => {
+    const db = new DatabaseSync(path.join(tmp, "integration.db"));
+    memory.initWithDatabase(db);
+
+    const retained = await memory.remember("agent", "fact", "SQLite stores durable memory indexes", {
+      tags: ["storage"],
+    });
+    const removed = await memory.remember("agent", "fact", "Temporary note for cleanup", {
+      tags: ["temporary"],
+    });
+
+    const indexed = db.prepare("SELECT COUNT(*) AS count FROM memory_content_search").get() as { count: number };
+    expect(indexed.count).toBe(2);
+
+    const hits = await memory.searchMemories("durable memory indexes", { limit: 10 });
+    expect(hits.map((entry) => entry.id)).toContain(retained.id);
+
+    await memory.forget(removed.id, "fact");
+    expect(db.prepare("SELECT COUNT(*) AS count FROM memory_content_search").get()).toMatchObject({ count: 1 });
+    expect((await memory.recall({ type: "fact", touch: false })).map((entry) => entry.id)).not.toContain(removed.id);
+
+    db.close();
+  });
+
   it("searchMemories returns BM25 + lexical results (hybrid fallback without embedder)", async () => {
     await memory.remember("me", "fact", "The vector database stores embeddings efficiently");
     await memory.remember("me", "fact", "A lexical search uses keyword matching");
