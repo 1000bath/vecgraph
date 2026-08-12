@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { DatabaseSync } from "node:sqlite";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { MemoryAdapter } from "./adapter.js";
@@ -243,8 +244,10 @@ describe("MemoryAdapter — end to end", () => {
     expect(pruned).toContain(stale.id);
   });
 
-  it("promoteWorking graduates high-access working memories to insight", async () => {
-    const working = await memory.remember("me", "working", "frequently recalled scratch note");
+  it("promoteWorking graduates high-access working memories and preserves indexes", async () => {
+    const db = new DatabaseSync(path.join(tmp, "memory.db"));
+    memory.initWithDatabase(db);
+    const working = await memory.remember("me", "working", "frequently recalled scratch note", { tags: ["scratch"] });
     // Simulate repeated access without waiting on recall()'s fire-and-forget touch.
     const filePath = path.join(tmp, ".oracle-memory", "working", `${working.id}.json`);
     const raw = JSON.parse(await fs.readFile(filePath, "utf8"));
@@ -258,6 +261,18 @@ describe("MemoryAdapter — end to end", () => {
     expect(insights.some((e) => e.content === "frequently recalled scratch note")).toBe(true);
     const workingLeft = await memory.recall({ type: "working" });
     expect(workingLeft.find((e) => e.id === working.id)).toBeUndefined();
+
+    // The promoted ID must remain searchable in SQLite/BM25 and the entity graph.
+    const indexed = await memory.searchMemories("frequently scratch note", { type: "insight" });
+    expect(indexed.some((e) => e.id === working.id)).toBe(true);
+    await memory.flushGraph();
+    const graphHits = await memory.graphQuery("scratch", { limit: 10 });
+    expect(graphHits.some((e) => e.id === working.id)).toBe(true);
+
+    // The target content index is updated, so re-remembering is still a dedupe.
+    const duplicate = await memory.remember("another-agent", "insight", "frequently recalled scratch note");
+    expect(duplicate.id).toBe(working.id);
+    db.close();
   });
 
   it("runMaintenance runs prune + promote together", async () => {

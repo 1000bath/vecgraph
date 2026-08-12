@@ -952,16 +952,37 @@ export class MemoryAdapter implements MemoryPort {
     return pruneStaleMemories(all, opts, saveFn);
   }
 
-  /** Promote working memories with high access count to insight. */
+  /** Move a memory between type partitions while preserving all secondary indexes. */
+  private async moveMemory(entry: MemoryStoreEntry, targetType: MemoryType): Promise<MemoryStoreEntry> {
+    const sourceType = entry.type;
+    const moved: MemoryStoreEntry = {
+      ...entry,
+      type: targetType,
+      accessCount: 0,
+      lastAccessed: new Date().toISOString(),
+      meta: { ...entry.meta, promotedFrom: { id: entry.id, type: sourceType } },
+    };
+    await this.writeEntry(moved);
+    this.queueContentIndex(MemoryAdapter.contentKey(targetType, canonicalContent(moved.content)), moved.id);
+    if (moved.anchors?.length) this.queueAnchorIndex({ id: moved.id, type: targetType, anchors: moved.anchors });
+    if (this.sqliteBackend) {
+      this.sqliteBackend.indexMemory(moved.id, moved.content).catch(() => {});
+      this.sqliteBackend.indexContent(moved.id, `${moved.content} ${moved.tags.join(" ")}`);
+    } else if (USE_OLLAMA) {
+      this.ensureVectors().then(() => this.vectors.index(moved.id, moved.content)).catch(() => {});
+    }
+    await this.entityGraph.indexMemory(moved.id, moved.content, moved.tags);
+    await this.withStoreDirs(() => fs.unlink(this.filePath(sourceType, moved.id)).catch(() => {}));
+    this.queueAnchorIndex({ id: moved.id, type: sourceType, deleted: true });
+    return moved;
+  }
+
+  /** Promote working memories with high access count. */
   async promoteWorking(opts?: MaintenanceOptions): Promise<string[]> {
     const all = await this.recall({ limit: 10_000, touch: false });
-    const saveFn = async (entry: MemoryStoreEntry): Promise<void> => {
-      await this.writeEntry(entry);
-    };
-    const deleteFn = async (id: string, type: string): Promise<void> => {
-      await this.forget(id, type as MemoryType);
-    };
-    return promoteWorkingMemories(all, opts, saveFn, deleteFn);
+    return promoteWorkingMemories(all, opts, undefined, undefined, (entry, targetType) =>
+      this.moveMemory(entry, targetType as MemoryType),
+    );
   }
 
   /** Run both prune and promote in sequence. */
@@ -970,10 +991,9 @@ export class MemoryAdapter implements MemoryPort {
     const saveFn = async (entry: MemoryStoreEntry): Promise<void> => {
       await this.writeEntry(entry);
     };
-    const deleteFn = async (id: string, type: string): Promise<void> => {
-      await this.forget(id, type as MemoryType);
-    };
-    return runMaintenance(all, opts, saveFn, deleteFn);
+    return runMaintenance(all, opts, saveFn, undefined, (entry, targetType) =>
+      this.moveMemory(entry, targetType as MemoryType),
+    );
   }
 
   // ── Reflection ──────────────────────────────────────────────────
