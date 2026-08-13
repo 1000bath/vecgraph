@@ -1,4 +1,4 @@
-# dek-memory Architecture
+# vecgraph Architecture
 
 ## Layers
 

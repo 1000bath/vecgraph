@@ -1,4 +1,4 @@
-# dek-memory
+# vecgraph
 
 Hybrid memory engine for AI agents — **BM25 + vector + entity/AST graph retrieval** over SQLite with consolidation, decay, file anchors, and eval harness. **Zero runtime dependencies** (Node 24 built-ins only).
 
@@ -6,10 +6,10 @@ Hybrid memory engine for AI agents — **BM25 + vector + entity/AST graph retrie
 
 ```bash
 # Install
-npm install dek-memory
+npm install vecgraph
 
 # Use
-import { MemoryAdapter } from "dek-memory";
+import { MemoryAdapter } from "vecgraph";
 
 const memory = new MemoryAdapter(".oracle-memory");
 await memory.remember("agent", "fact", "Important insight about the codebase");
@@ -22,7 +22,7 @@ SQLite-backed hybrid search is enabled when you provide a `node:sqlite` database
 
 ```ts
 import { DatabaseSync } from "node:sqlite";
-import { MemoryAdapter } from "dek-memory";
+import { MemoryAdapter } from "vecgraph";
 
 const db = new DatabaseSync(".oracle-memory/memory.db");
 const memory = new MemoryAdapter(process.cwd());

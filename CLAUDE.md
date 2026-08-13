@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-**dek-memory** is a hybrid retrieval engine for AI agents. It combines **BM25 keyword search + vector similarity + entity graph + AST graph** over SQLite, with consolidation, decay, file anchors, and eval harness. **Zero runtime dependencies** — pure Node.js 24+ built-ins.
+**vecgraph** is a hybrid retrieval engine for AI agents. It combines **BM25 keyword search + vector similarity + entity graph + AST graph** over SQLite, with consolidation, decay, file anchors, and eval harness. **Zero runtime dependencies** — pure Node.js 24+ built-ins.
 
-Extracted from Oracle-Ecosystems as a standalone package, now part of the dek ecosystem (dek-memory, dek-agent, dek-gateway).
+Extracted from Oracle-Ecosystems as a standalone package, now part of the dek ecosystem (vecgraph, dek-agent, dek-gateway).
 
 ## Architecture
 

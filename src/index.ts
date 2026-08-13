@@ -1,5 +1,5 @@
 /**
- * dek-memory — hybrid memory engine for AI agents.
+ * vecgraph — hybrid memory engine for AI agents.
  *
  * BM25 + vector + entity/AST graph retrieval over SQLite (node:sqlite),
  * with consolidation, decay, file anchors, and an eval harness.

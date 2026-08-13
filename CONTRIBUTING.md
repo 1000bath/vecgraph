@@ -1,4 +1,4 @@
-# Contributing to dek-memory
+# Contributing to vecgraph
 
 > Workspace-wide policies: [../CONTRIBUTING.md](../CONTRIBUTING.md) and [../SECURITY.md](../SECURITY.md).
 

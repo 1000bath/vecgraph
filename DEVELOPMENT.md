@@ -1,4 +1,4 @@
-# dek-memory Development
+# vecgraph Development
 
 ## Prerequisites
 

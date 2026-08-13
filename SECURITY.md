@@ -1,4 +1,4 @@
-# dek-memory Security
+# vecgraph Security
 
 See the [workspace security policy](../SECURITY.md).
 

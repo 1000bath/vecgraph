@@ -1,7 +1,7 @@
 {
-  "name": "memory",
+  "name": "vecgraph",
   "version": "0.1.0",
-  "description": "Hybrid memory engine for AI agents \u2014 BM25 + vector + entity/AST graph retrieval over SQLite, with consolidation, decay, anchors, and an eval harness. Zero runtime dependencies (Node 24 built-ins only).",
+  "description": "Hybrid memory engine for AI agents — BM25 + vector + entity/AST graph retrieval over SQLite, with consolidation, decay, anchors, and an eval harness. Zero runtime dependencies (Node 24 built-ins only).",
   "keywords": [
     "agent-memory",
     "ai-memory",
@@ -16,7 +16,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/1000bath/memory.git"
+    "url": "git+https://github.com/1000bath/vecgraph.git"
   },
   "engines": {
     "node": ">=24"
@@ -37,11 +37,16 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run src"
+    "test": "vitest run src",
+    "prepublishOnly": "npm run build && npm test"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
+  },
+  "homepage": "https://github.com/1000bath/vecgraph#readme",
+  "bugs": {
+    "url": "https://github.com/1000bath/vecgraph/issues"
   }
 }
